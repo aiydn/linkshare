@@ -1,0 +1,180 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/theme/toastui-editor-dark.min.css" />
+    <meta name="viewport" content="width=device-width">
+    <style>
+        *,
+        :root {
+            color-scheme: light dark;
+            /* overflow: hidden; */
+            margin: 0;
+            padding: 0;
+        }
+
+        .flex-containerA {
+            display: flex;
+            flex-direction: row;
+            font-size: 30px;
+            text-align: center;
+
+        }
+
+
+        .flex-containerB {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+
+        }
+
+
+
+        .flex-item {
+            flex: 50%;
+            height: auto;
+        }
+
+        button,
+        input {
+            margin: 1vh 1vw;
+            padding: 0.5vh 0.5vw;
+        }
+
+        #storage {
+            background-color: rgba(128, 128, 128, 0.5);
+            /* margin: 10px 20px; */
+        }
+
+        #storageBar {
+            width: 1%;
+            height: 1vh;
+            background-color: #04AA6D;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="flex-containerB">
+        <div id="frame" class="flex-item">
+            <div id="editor"></div>
+        </div>
+        <div id="buttons" class="flex-containerA">
+            <button class="flex-item" title="new" id="create" onclick="create()">new</button>
+            <button class="flex-item" title="save" id="save" onclick="save()">save</button>
+            <button class="flex-item" title="share" id="share" onclick="share()">share</button>
+            <button class="flex-item" title="edit" id="edit" onclick="edit()">edit</button>
+            <button class="flex-item" title="view" id="view" onclick="view()">view</button>
+        </div>
+        <div id="storage">
+            <div class="flex-item" id="storageBar"></div>
+        </div>
+    </div>
+    </div>
+
+
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <script>
+        // functions
+        function isItTrueorFalse(rule, trueReturn, falseReturn) {
+            if (rule == true) { return trueReturn }
+            if (rule == false) { return falseReturn }
+        }
+        function getTheme() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) { return 'dark' } else { return 'light' }
+        }
+        function loop() {
+            check()
+            autoButton()
+            requestAnimationFrame(loop)
+        }
+        function check() {
+            var maxurl = 15000;
+            let url = location.href + `/?e=` + btoa(editor.getMarkdown());
+            let urlLength = url.length / maxurl * 100;
+            let elem = document.getElementById("storageBar");
+            if (urlLength > 100) { elem.style.width = "100%" }
+            else { elem.style.width = urlLength + "%" }
+            if (urlLength > 100) { elem.style.backgroundColor = "#aa0404"; disable(["save"]); return false }
+            else if (editor.getMarkdown() == '') { elem.style.backgroundColor = "#04AA6D"; disable(["save"]); return true }
+            else { elem.style.backgroundColor = "#04AA6D"; enable(["save"]); return true }
+        }
+        function autoButton() {
+            if (editor.getMarkdown() == '') { mode = 'new' }
+            else if (editor.getMarkdown() !== atob(data)) { mode = "editing" }
+            if (mode == 'editing') { hide(["share"]); show(["save"]); enable(["create"]); disable(["view"]) }
+            else if (mode == 'new') { hide(["edit", "share"]); disable(['create']) }
+        }
+
+
+        //get mode
+        const params = new Proxy(new URLSearchParams(window.location.search), {
+            get: (searchParams, prop) => searchParams.get(prop),
+        });
+        if (params.e !== null) { var mode = 'editor'; data = params.e; var viewOnly = false }
+        else if (params.v !== null) { var mode = 'viewer'; data = params.v; var viewOnly = true }
+        else if (params.r !== null) { var mode = 'reader'; data = params.r; var viewOnly = true }
+        else { var mode = 'new'; data = ""; var viewOnly = false }
+        if (data == "") { mode = 'new'; var viewOnly = false }
+        //show editor
+        const { Editor } = toastui;
+        const editor = toastui.Editor.factory({
+            viewer: viewOnly,
+            el: document.querySelector('#editor'),
+            height: '100%',
+            initialEditType: 'wysiwyg',
+            initialValue: atob(data),
+            previewStyle: 'vertical',
+            theme: getTheme()
+        });
+
+        if (mode == 'new') { disable(["save", "create", "share", "view", "edit"]) }
+        if (mode == 'editor') { hide(["edit", "save"]) }
+        if (mode == 'new') { hide(["edit", "share"]) }
+        if (mode == 'viewer') { hide(["view", "storage", "save"]); document.getElementById("frame").style.margin = "1vmax" }
+        if (mode == 'reader') { hide(["buttons", "storage"]); document.getElementById("frame").style.margin = "1vmax" }
+        else if (!viewOnly) { requestAnimationFrame(loop) }
+
+
+        function hide(id) {
+            for (let i = 0; i < id.length; i++) {
+                document.getElementById(id[i]).style.display = 'none'
+            }
+        }
+        function show(id) {
+            for (let i = 0; i < id.length; i++) {
+                document.getElementById(id[i]).style.display = 'block'
+            }
+        }
+        function enable(id) {
+            for (let i = 0; i < id.length; i++) {
+                document.getElementById(id[i]).disabled = false;
+            }
+        }
+        function disable(id) {
+            for (let i = 0; i < id.length; i++) {
+                document.getElementById(id[i]).disabled = true;
+            }
+        }
+        // buttons
+        function save() {
+            window.location.href = location.href = "/?e=" + btoa(editor.getMarkdown());
+        }
+        function create() {
+            window.open(location.href, '_blank');
+        }
+        function share() {
+            navigator.share({ url: window.location.href })
+        }
+        function view() {
+            window.location.href = location.href = "/?v=" + data;
+        }
+        function edit() {
+            window.location.href = location.href = "/?e=" + data;
+        } 
+    </script>
+</body>
+
+</html>
